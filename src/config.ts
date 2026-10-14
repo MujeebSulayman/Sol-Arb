@@ -1,0 +1,77 @@
+import { Keypair, PublicKey } from "@solana/web3.js";
+import bs58 from "bs58";
+
+function env(name: string, fallback?: string): string {
+  const value = process.env[name]?.trim();
+  if (value) return value;
+  if (fallback !== undefined) return fallback;
+  throw new Error(`Missing required env var: ${name}`);
+}
+
+function envInt(name: string, fallback: number): number {
+  const raw = process.env[name]?.trim();
+  if (!raw) return fallback;
+  const n = Number(raw);
+  if (!Number.isFinite(n) || n < 0) throw new Error(`Env var ${name} must be a non-negative number, got "${raw}"`);
+  return Math.floor(n);
+}
+
+function envBool(name: string, fallback: boolean): boolean {
+  const raw = process.env[name]?.trim().toLowerCase();
+  if (!raw) return fallback;
+  return raw === "true" || raw === "1" || raw === "yes";
+}
+
+function loadWallet(): Keypair | null {
+  const secret = process.env.WALLET_PRIVATE_KEY?.trim();
+  if (!secret) return null;
+  try {
+    // Accept either base58 or a JSON byte array (Solana CLI keypair format).
+    const bytes = secret.startsWith("[") ? Uint8Array.from(JSON.parse(secret)) : bs58.decode(secret);
+    return Keypair.fromSecretKey(bytes);
+  } catch {
+    throw new Error("WALLET_PRIVATE_KEY is not a valid base58 secret key or JSON byte array");
+  }
+}
+
+export const WSOL_MINT = "So11111111111111111111111111111111111111112";
+
+const baseMint = env("BASE_MINT", "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v");
+
+export const config = {
+  rpcUrl: env("RPC_URL", "https://api.mainnet-beta.solana.com"),
+  jupiterApiUrl: env("JUPITER_API_URL", "https://lite-api.jup.ag/swap/v1").replace(/\/$/, ""),
+  jupiterApiKey: process.env.JUPITER_API_KEY?.trim() || undefined,
+
+  wallet: loadWallet(),
+
+  baseMint,
+  tradeAmount: envInt("TRADE_AMOUNT", 10_000_000),
+  targetMints: env("TARGET_MINTS", WSOL_MINT)
+    .split(",")
+    .map((m) => m.trim())
+    .filter((m) => m && m !== baseMint),
+  minProfit: envInt("MIN_PROFIT", 10_000),
+  maxAccountsPerLeg: envInt("MAX_ACCOUNTS_PER_LEG", 24),
+  priorityFeeMicroLamports: envInt("PRIORITY_FEE_MICROLAMPORTS", 10_000),
+  computeUnitLimit: envInt("COMPUTE_UNIT_LIMIT", 600_000),
+  scanIntervalMs: envInt("SCAN_INTERVAL_MS", 2_000),
+
+  useJito: envBool("USE_JITO", false),
+  jitoTipLamports: envInt("JITO_TIP_LAMPORTS", 10_000),
+  jitoBlockEngineUrl: env("JITO_BLOCK_ENGINE_URL", "https://mainnet.block-engine.jito.wtf").replace(/\/$/, ""),
+
+  dryRun: envBool("DRY_RUN", true),
+};
+
+// Validate mints early so a typo fails loudly at startup.
+for (const mint of [config.baseMint, ...config.targetMints]) {
+  try {
+    new PublicKey(mint);
+  } catch {
+    throw new Error(`Invalid mint address in config: ${mint}`);
+  }
+}
+if (config.targetMints.length === 0) throw new Error("TARGET_MINTS must contain at least one mint other than BASE_MINT");
+
+export type Config = typeof config;
