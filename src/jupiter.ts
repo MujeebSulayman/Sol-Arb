@@ -41,9 +41,38 @@ function headers(extra: Record<string, string> = {}): Record<string, string> {
   return h;
 }
 
+// --- Rate limiting ---------------------------------------------------------
+// Jupiter limits: keyless = 0.5 req/s (30/min), free key = 1 req/s (60/min).
+// Every request waits for its slot so we never exceed config.jupiterRps.
+const minGapMs = Math.ceil(1000 / config.jupiterRps);
+let nextSlot = 0;
+let backoffUntil = 0;
+let lastRateLimitLog = 0;
+
+async function waitForSlot(): Promise<void> {
+  const now = Date.now();
+  const slot = Math.max(now, nextSlot, backoffUntil);
+  nextSlot = slot + minGapMs;
+  if (slot > now) await new Promise((r) => setTimeout(r, slot - now));
+}
+
+export class RateLimitError extends Error {}
+
 async function request<T>(url: string, init: RequestInit = {}): Promise<T> {
+  await waitForSlot();
   const res = await fetch(url, { ...init, signal: AbortSignal.timeout(5_000) });
   const text = await res.text();
+  if (res.status === 429) {
+    // Pause all requests for a few seconds, then carry on.
+    backoffUntil = Date.now() + 5_000;
+    if (Date.now() - lastRateLimitLog > 30_000) {
+      lastRateLimitLog = Date.now();
+      console.warn(
+        `⚠️  Jupiter rate limit hit; pausing 5s. ${config.jupiterApiKey ? "Lower JUPITER_RPS." : "Add a free JUPITER_API_KEY to double the limit."}`,
+      );
+    }
+    throw new RateLimitError("Jupiter 429 Too Many Requests");
+  }
   if (!res.ok) throw new Error(`Jupiter ${res.status} ${res.statusText}: ${text.slice(0, 300)}`);
   return JSON.parse(text) as T;
 }
@@ -67,7 +96,7 @@ export async function getQuote(params: {
     return await request<QuoteResponse>(`${config.jupiterApiUrl}/quote?${qs}`, { headers: headers() });
   } catch (err) {
     // No route / rate limit: treat as "no opportunity" for this round.
-    if (process.env.DEBUG) console.warn(`[quote] ${params.inputMint} -> ${params.outputMint}:`, (err as Error).message);
+    if (process.env.DEBUG && !(err instanceof RateLimitError)) console.warn(`[quote] ${params.inputMint} -> ${params.outputMint}:`, (err as Error).message);
     return null;
   }
 }

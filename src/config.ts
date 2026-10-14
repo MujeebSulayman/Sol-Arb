@@ -66,8 +66,12 @@ export const config = {
   rpcUrl: rpc.rpcUrl,
   wsUrl: rpc.wsUrl,
   rpcProvider: rpc.provider,
-  jupiterApiUrl: env("JUPITER_API_URL", "https://lite-api.jup.ag/swap/v1").replace(/\/$/, ""),
+  // api.jup.ag works with or without a key (lite-api.jup.ag is being retired).
+  jupiterApiUrl: env("JUPITER_API_URL", "https://api.jup.ag/swap/v1").replace(/\/$/, ""),
   jupiterApiKey: process.env.JUPITER_API_KEY?.trim() || undefined,
+  // Requests per second to Jupiter. Defaults sit just under Jupiter's limits:
+  // keyless 0.5/s, free key 1/s. Raise only if your plan allows more.
+  jupiterRps: Number(process.env.JUPITER_RPS?.trim()) || (process.env.JUPITER_API_KEY?.trim() ? 0.9 : 0.45),
 
   wallet: loadWallet(),
 

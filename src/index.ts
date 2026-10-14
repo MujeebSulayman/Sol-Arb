@@ -80,6 +80,11 @@ async function main(): Promise<void> {
   if (config.rpcProvider === "public") {
     console.warn("  ⚠️  Using the public RPC. Set ALCHEMY_API_KEY or RPC_URL for real use.");
   }
+  console.log(
+    `  Jupiter:    ${config.jupiterApiUrl} (${config.jupiterApiKey ? "API key" : "no key"}, ${config.jupiterRps} req/s ≈ ${Math.round(
+      (config.targetMints.length * 2) / config.jupiterRps,
+    )}s per round)`,
+  );
   console.log(`  Base mint:  ${config.baseMint}`);
   console.log(`  Targets:    ${config.targetMints.map(short).join(", ")}`);
   console.log(`  Trade size: ${config.tradeAmount} (base units), min profit ${config.minProfit}`);

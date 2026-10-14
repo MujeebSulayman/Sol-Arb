@@ -55,7 +55,8 @@ All settings live in `.env`. See `.env.example` for defaults.
 |---|---|
 | `ALCHEMY_API_KEY` | Your Alchemy key. The bot builds `https://solana-mainnet.g.alchemy.com/v2/<key>` from it. |
 | `RPC_URL` / `WS_URL` | Any other provider's full URL (Helius, Triton, QuickNode). Overrides `ALCHEMY_API_KEY`. With neither set, the slow public RPC is used. |
-| `JUPITER_API_URL` / `JUPITER_API_KEY` | Jupiter Swap API. The free `lite-api` endpoint is heavily rate-limited; an API key (`https://api.jup.ag/swap/v1`) raises the limits. |
+| `JUPITER_API_URL` / `JUPITER_API_KEY` | Jupiter Swap API. Without a key: 30 requests/min. A free key from [developers.jup.ag/portal](https://developers.jup.ag/portal) doubles that to 60/min. |
+| `JUPITER_RPS` | Requests per second to Jupiter. Defaults to 0.45 (no key) or 0.9 (key) so the bot stays under the limit. Raise only on a paid plan. Each round makes 2 requests per target token. |
 | `BASE_MINT` | Token you start and end with. |
 | `TRADE_AMOUNT` | Size per attempt, in the base token's smallest unit (USDC: 1 USDC = `1000000`). |
 | `TARGET_MINTS` | Comma-separated tokens to cycle through. |
