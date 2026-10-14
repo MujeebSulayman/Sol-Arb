@@ -77,6 +77,9 @@ async function request<T>(url: string, init: RequestInit = {}): Promise<T> {
   return JSON.parse(text) as T;
 }
 
+/** Mints Jupiter reports as TOKEN_NOT_TRADABLE; skipped for the rest of the run. */
+export const untradableMints = new Set<string>();
+
 export async function getQuote(params: {
   inputMint: string;
   outputMint: string;
@@ -95,6 +98,16 @@ export async function getQuote(params: {
   try {
     return await request<QuoteResponse>(`${config.jupiterApiUrl}/quote?${qs}`, { headers: headers() });
   } catch (err) {
+    const msg = (err as Error).message;
+    if (msg.includes("TOKEN_NOT_TRADABLE")) {
+      for (const mint of [params.inputMint, params.outputMint]) {
+        if (msg.includes(mint) && !untradableMints.has(mint)) {
+          untradableMints.add(mint);
+          console.warn(`⚠️  Jupiter says ${mint} is not tradable; skipping it from now on.`);
+        }
+      }
+      return null;
+    }
     // No route / rate limit: treat as "no opportunity" for this round.
     if (process.env.DEBUG && !(err instanceof RateLimitError)) console.warn(`[quote] ${params.inputMint} -> ${params.outputMint}:`, (err as Error).message);
     return null;

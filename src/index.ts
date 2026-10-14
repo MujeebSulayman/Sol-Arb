@@ -1,6 +1,6 @@
 import { Connection } from "@solana/web3.js";
 import { config, WSOL_MINT } from "./config.js";
-import { buildCircularQuote, getQuote, getSwapInstructions, type QuoteResponse } from "./jupiter.js";
+import { buildCircularQuote, getQuote, getSwapInstructions, untradableMints, type QuoteResponse } from "./jupiter.js";
 import { buildTransaction, send, simulate } from "./executor.js";
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -105,6 +105,7 @@ async function main(): Promise<void> {
     round++;
     for (const targetMint of config.targetMints) {
       if (!running) break;
+      if (untradableMints.has(targetMint)) continue;
       try {
         const opp = await checkCycle(targetMint);
         if (!opp) continue;
