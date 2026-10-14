@@ -38,8 +38,34 @@ export const WSOL_MINT = "So11111111111111111111111111111111111111112";
 
 const baseMint = env("BASE_MINT", "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v");
 
+/**
+ * RPC resolution order:
+ *   1. RPC_URL if set explicitly (any provider)
+ *   2. ALCHEMY_API_KEY -> Alchemy Solana mainnet endpoint
+ *   3. Public mainnet RPC (slow, rate-limited; testing only)
+ */
+function resolveRpc(): { rpcUrl: string; wsUrl?: string; provider: string } {
+  const explicit = process.env.RPC_URL?.trim();
+  const wsExplicit = process.env.WS_URL?.trim() || undefined;
+  if (explicit) return { rpcUrl: explicit, wsUrl: wsExplicit, provider: "custom" };
+
+  const alchemyKey = process.env.ALCHEMY_API_KEY?.trim();
+  if (alchemyKey) {
+    return {
+      rpcUrl: `https://solana-mainnet.g.alchemy.com/v2/${alchemyKey}`,
+      wsUrl: wsExplicit ?? `wss://solana-mainnet.g.alchemy.com/v2/${alchemyKey}`,
+      provider: "alchemy",
+    };
+  }
+  return { rpcUrl: "https://api.mainnet-beta.solana.com", wsUrl: wsExplicit, provider: "public" };
+}
+
+const rpc = resolveRpc();
+
 export const config = {
-  rpcUrl: env("RPC_URL", "https://api.mainnet-beta.solana.com"),
+  rpcUrl: rpc.rpcUrl,
+  wsUrl: rpc.wsUrl,
+  rpcProvider: rpc.provider,
   jupiterApiUrl: env("JUPITER_API_URL", "https://lite-api.jup.ag/swap/v1").replace(/\/$/, ""),
   jupiterApiKey: process.env.JUPITER_API_KEY?.trim() || undefined,
 

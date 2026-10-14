@@ -19,9 +19,17 @@ Requires Node.js 20.6+.
 ```bash
 npm install
 cp .env.example .env
-# edit .env
+# edit .env: at minimum set ALCHEMY_API_KEY
 npm run dev
 ```
+
+### Using Alchemy
+
+1. Sign in at [dashboard.alchemy.com](https://dashboard.alchemy.com) and create an app with **Solana** as the chain and **Mainnet** as the network.
+2. Copy the app's API key into `.env` as `ALCHEMY_API_KEY=...`.
+3. On startup the bot should print `RPC: https://solana-mainnet.g.alchemy.com/v2/*** (alchemy)`. The key is masked in logs.
+
+Each scan uses Jupiter for quotes, not your RPC. Alchemy is only called when building, simulating and confirming a trade, so the free tier goes a long way.
 
 ### Modes
 
@@ -45,7 +53,8 @@ All settings live in `.env`. See `.env.example` for defaults.
 
 | Variable | Meaning |
 |---|---|
-| `RPC_URL` | Solana RPC. **Use a paid one** (Helius, Triton, QuickNode). The public RPC is too slow and rate-limited. |
+| `ALCHEMY_API_KEY` | Your Alchemy key. The bot builds `https://solana-mainnet.g.alchemy.com/v2/<key>` from it. |
+| `RPC_URL` / `WS_URL` | Any other provider's full URL (Helius, Triton, QuickNode). Overrides `ALCHEMY_API_KEY`. With neither set, the slow public RPC is used. |
 | `JUPITER_API_URL` / `JUPITER_API_KEY` | Jupiter Swap API. The free `lite-api` endpoint is heavily rate-limited; an API key (`https://api.jup.ag/swap/v1`) raises the limits. |
 | `BASE_MINT` | Token you start and end with. |
 | `TRADE_AMOUNT` | Size per attempt, in the base token's smallest unit (USDC: 1 USDC = `1000000`). |

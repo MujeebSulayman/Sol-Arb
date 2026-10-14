@@ -131,11 +131,30 @@ export async function send(
     ? await sendViaJito(tx)
     : await connection.sendRawTransaction(tx.serialize(), { skipPreflight: true, maxRetries: 0 });
 
-  try {
-    const result = await connection.confirmTransaction({ signature, blockhash, lastValidBlockHeight }, "confirmed");
-    return { signature, landed: result.value.err === null, err: result.value.err };
-  } catch (err) {
-    // Blockhash expired: the transaction never landed, so nothing was spent.
-    return { signature, landed: false, err: (err as Error).message };
+  return confirmByPolling(connection, signature, lastValidBlockHeight);
+}
+
+/**
+ * Poll for confirmation over plain HTTP instead of a WebSocket subscription,
+ * so it works the same on every RPC provider (Alchemy, Helius, etc.).
+ */
+async function confirmByPolling(
+  connection: Connection,
+  signature: string,
+  lastValidBlockHeight: number,
+): Promise<{ signature: string; landed: boolean; err?: unknown }> {
+  while (true) {
+    const { value } = await connection.getSignatureStatuses([signature]);
+    const status = value[0];
+    if (status?.err) return { signature, landed: false, err: status.err };
+    if (status?.confirmationStatus === "confirmed" || status?.confirmationStatus === "finalized") {
+      return { signature, landed: true };
+    }
+    const height = await connection.getBlockHeight("confirmed");
+    if (height > lastValidBlockHeight) {
+      // Blockhash expired: the transaction never landed, so nothing was spent.
+      return { signature, landed: false, err: "blockhash expired" };
+    }
+    await new Promise((r) => setTimeout(r, 500));
   }
 }

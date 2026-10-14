@@ -70,10 +70,16 @@ async function execute(connection: Connection, opp: Opportunity): Promise<void> 
 }
 
 async function main(): Promise<void> {
-  const connection = new Connection(config.rpcUrl, "confirmed");
+  const connection = new Connection(config.rpcUrl, { commitment: "confirmed", wsEndpoint: config.wsUrl });
+
+  // Never print the full URL: Alchemy (and most providers) embed the API key in it.
+  const rpcDisplay = config.rpcUrl.replace(/\/v2\/.+$/, "/v2/***").replace(/([?&]api[-_]?key=)[^&]+/i, "$1***");
 
   console.log("Solana arbitrage bot");
-  console.log(`  RPC:        ${config.rpcUrl}`);
+  console.log(`  RPC:        ${rpcDisplay} (${config.rpcProvider})`);
+  if (config.rpcProvider === "public") {
+    console.warn("  ⚠️  Using the public RPC. Set ALCHEMY_API_KEY or RPC_URL for real use.");
+  }
   console.log(`  Base mint:  ${config.baseMint}`);
   console.log(`  Targets:    ${config.targetMints.map(short).join(", ")}`);
   console.log(`  Trade size: ${config.tradeAmount} (base units), min profit ${config.minProfit}`);
