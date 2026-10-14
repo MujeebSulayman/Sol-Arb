@@ -73,7 +73,16 @@ export const config = {
 
   baseMint,
   tradeAmount: envInt("TRADE_AMOUNT", 10_000_000),
-  targetMints: env("TARGET_MINTS", WSOL_MINT)
+  // Default targets: SOL, JUP, BONK, jitoSOL
+  targetMints: env(
+    "TARGET_MINTS",
+    [
+      WSOL_MINT,
+      "JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN",
+      "DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263",
+      "J1toso1uCk3RLmjorhTtrVwY9HJ7X1V9yYac6Y7kGCPn",
+    ].join(","),
+  )
     .split(",")
     .map((m) => m.trim())
     .filter((m) => m && m !== baseMint),
